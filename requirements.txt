@@ -3,15 +3,20 @@ fastapi==0.115.6
 uvicorn==0.34.0
 pydantic==2.10.4
 python-dotenv==1.0.1
+python-multipart==0.0.20
 
-# LLM
+# LLM (OpenAI-compatible client for all providers)
 openai==1.58.1
 
 # SQL
 sqlalchemy==2.0.36
 
 # Database drivers
-sqlalchemy-bigquery==1.12.0
-google-cloud-bigquery==3.27.0
 pymysql==1.1.1
 psycopg2-binary==2.9.10
+sqlalchemy-bigquery==1.12.0
+google-cloud-bigquery==3.27.0
+
+# Scheduling & notifications
+apscheduler==3.10.4
+httpx==0.28.1

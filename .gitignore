@@ -8,12 +8,13 @@ venv/
 .env
 service_postgres_key.json
 temp_service_account.json
+askbase_*.json
 
-# Gradio
-.gradio/
-
-# Data
+# Data (generated at runtime)
 table_schemas.json
+demo.db
+conversations.db
+data/
 
 # IDE
 .vscode/
@@ -27,3 +28,6 @@ Thumbs.db
 ngrok.exe
 ngrok.zip
 ngrok-v3.zip
+
+# Gradio (legacy)
+.gradio/

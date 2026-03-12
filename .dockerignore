@@ -1,9 +1,35 @@
-venv/
-__pycache__/
-.env
-*.zip
-ngrok.exe
-ngrok-v3.zip
-service_postgres_key.json
-temp_service_account.json
+# Git
 .git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Environment & secrets
+.env
+*.json
+!package.json
+
+# Data (generated at runtime)
+*.db
+data/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.zip
+*.exe
+Img/
+README.md
+CLAUDE.md
+fetch_schema.py
