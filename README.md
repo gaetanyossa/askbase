@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="Img/logo.png" alt="AskBase Logo" width="80" />
-</p>
-
 <h1 align="center">AskBase</h1>
 
 <p align="center">
