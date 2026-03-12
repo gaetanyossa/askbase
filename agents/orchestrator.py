@@ -24,8 +24,9 @@ def agent_orchestrator(
       - {"action": "chat", "response": "..."}  -> direct response, no SQL needed
       - {"action": "analyze", "tables": [...], "intent": "..."}  -> delegate to Analyzer
       - {"action": "respond", "message": "..."}  -> respond directly (e.g. no data available)
+      - {"action": "clarify", "question": "..."}  -> ask user for more details
     """
-    trace.log("Orchestrator", f'Processing: "{question}"')
+    trace.log("Orchestrator", f'Received question: "{question}"')
 
     system = ORCHESTRATOR_SYSTEM.format(
         db_type=db_type,
@@ -37,7 +38,7 @@ def agent_orchestrator(
         for msg in conversation[-10:]:
             messages.append({"role": "user", "content": msg["q"]})
             messages.append({"role": "assistant", "content": msg["a"]})
-        trace.log("Orchestrator", f"Using {len(conversation[-10:])} previous exchange(s) as context.")
+        trace.log("Orchestrator", f"Loaded {len(conversation[-10:])} previous exchange(s) for context.")
 
     messages.append({"role": "user", "content": question})
 
@@ -50,14 +51,19 @@ def agent_orchestrator(
         decision = {"action": "chat", "response": raw}
 
     action = decision.get("action", "chat")
+    reasoning = decision.get("reasoning", "")
+
+    trace.log("Orchestrator", f"Reasoning: {reasoning}")
     trace.log("Orchestrator", f"Decision: {action}")
 
     if action == "analyze":
-        trace.log("Orchestrator", f"-> Delegating to Analyzer: find columns for {decision.get('intent', '?')}")
-        trace.log("Orchestrator", f"   Tables: {', '.join(decision.get('tables', []))}")
+        trace.log("Orchestrator", f"Delegating to Analyzer for: {decision.get('intent', '?')}")
+        trace.log("Orchestrator", f"Target tables: {', '.join(decision.get('tables', []))}")
     elif action == "respond":
-        trace.log("Orchestrator", f"-> Direct response: {decision.get('message', '')[:100]}")
+        trace.log("Orchestrator", f"Direct schema response: {decision.get('message', '')[:120]}")
+    elif action == "clarify":
+        trace.log("Orchestrator", f"Asking user for clarification: {decision.get('question', '')}")
     elif action == "chat":
-        trace.log("Orchestrator", "-> Conversational response (no SQL needed)")
+        trace.log("Orchestrator", "Conversational response (no SQL needed)")
 
     return decision

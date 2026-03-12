@@ -1,8 +1,9 @@
 """Orchestrator-driven multi-agent pipeline.
 
-Flow: Orchestrator -> Analyzer -> SQL Writer -> Validator -> Executor -> Formatter
+Flow: Orchestrator -> Reasoner -> Analyzer -> SQL Writer -> Validator -> Executor -> Formatter
 The Orchestrator decides if the question needs data (SQL) or is just chat.
-The Analyzer deeply inspects the schema. The SQL Writer uses the Analyzer's output directly.
+The Reasoner deeply analyzes the question and reformulates it.
+The Analyzer writes SQL instructions. The SQL Writer generates the query.
 """
 
 import re
@@ -11,8 +12,9 @@ from sqlalchemy import create_engine
 
 import config
 from agents.trace import AgentTrace
-from agents.llm import create_client, get_default_model
+from agents.llm import create_client, get_default_model, reset_token_usage, get_token_usage
 from agents.orchestrator import agent_orchestrator
+from agents.reasoner import agent_reasoner
 from agents.analyzer import agent_analyzer
 from agents.sql_writer import agent_sql_writer, agent_sql_retry
 from agents.validator import agent_validator
@@ -20,6 +22,7 @@ from agents.executor import agent_executor
 from agents.formatter import agent_formatter
 from db.connection import build_connection_url
 from db.schema import get_live_schema, load_schema_file, format_schema
+from db.conversations import get_audit
 from prompts import QUALIFIER_RULES
 
 
@@ -52,6 +55,7 @@ def ask(
         raise ValueError("API key is required")
 
     trace = AgentTrace()
+    reset_token_usage()
     client = create_client(api_key, llm_provider)
 
     url = build_connection_url(
@@ -75,13 +79,18 @@ def ask(
         except Exception:
             schema_block = "(no schema available)"
 
+    # Enrich schema with audit context if available
+    audit = get_audit()
+    if audit and audit.get("text"):
+        schema_block += "\n\n--- Database Audit (overview) ---\n" + audit["text"]
+
     qualifier_rule = QUALIFIER_RULES.get(db_type, "").format(
         project=bigquery_project or config.BIGQUERY_PROJECT,
         dataset=bigquery_dataset or config.BIGQUERY_DATASET,
     )
 
     try:
-        # ---- Step 1: Orchestrator decides: chat or data question ----
+        # ---- Step 1: Orchestrator decides: chat, clarify, respond, or analyze ----
         decision = agent_orchestrator(
             client, model, question, schema_block, db_type, trace,
             conversation=conversation,
@@ -92,40 +101,46 @@ def ask(
         if action == "chat":
             return _result(question, decision.get("response", ""), trace)
 
+        if action == "clarify":
+            return _result(question, decision.get("question", "Could you be more specific?"), trace)
+
         if action == "respond":
             return _result(question, decision.get("message", ""), trace)
 
-        # ---- Step 2: Analyzer inspects schema ----
-        if action == "analyze":
-            plan = {
-                "intent": decision.get("intent", ""),
-                "tables": decision.get("tables", []),
-                "notes": decision.get("notes", ""),
-            }
-            analysis = agent_analyzer(client, model, question, plan, schema_block, db_type, trace)
+        # ---- Step 2: Reasoner deeply analyzes the question ----
+        reasoner_result = agent_reasoner(
+            client, model, question, schema_block, db_type, trace,
+            conversation=conversation,
+        )
 
-            # Check if Analyzer says data is not available
-            analysis_lower = analysis.lower()
-            if any(phrase in analysis_lower for phrase in [
-                "cannot be answered", "not available", "no column", "impossible",
-                "does not exist", "no such column", "not possible",
-            ]):
-                # Let Analyzer's explanation be the response if it clearly says impossible
-                # But still try SQL -- the SQL Writer will return a comment if truly impossible
-                trace.log("Orchestrator", "Analyzer flagged potential issue, proceeding to SQL Writer anyway.")
+        reformulated = reasoner_result.get("reformulated_question", question)
+        strategy = reasoner_result.get("strategy", "direct query")
+        reasoner_tables = reasoner_result.get("tables", [])
 
-        else:
-            # Fallback: treat as analyze with empty plan
-            plan = {"intent": question, "tables": [], "notes": ""}
-            analysis = agent_analyzer(client, model, question, plan, schema_block, db_type, trace)
+        # Merge tables from orchestrator and reasoner
+        all_tables = list(set(decision.get("tables", []) + reasoner_tables))
 
-        # ---- Step 3: SQL Writer uses Analyzer's full analysis directly ----
+        # ---- Step 3: Analyzer writes SQL instructions ----
+        plan = {
+            "intent": reformulated,
+            "strategy": strategy,
+            "tables": all_tables,
+        }
+        analysis = agent_analyzer(client, model, reformulated, plan, schema_block, db_type, trace)
+
+        # If Analyzer says data is not available, return directly
+        if analysis.startswith("NOT_POSSIBLE:"):
+            msg = analysis.replace("NOT_POSSIBLE:", "").strip()
+            trace.log("Formatter", f"Not possible: {msg}")
+            return _result(question, msg, trace)
+
+        # ---- Step 4: SQL Writer generates the query ----
         sql = agent_sql_writer(
-            client, model, question, analysis,
+            client, model, reformulated, analysis,
             schema_block, db_type, qualifier_rule, config.MAX_ROWS, trace,
         )
 
-        # ---- Step 4: Validator ----
+        # ---- Step 5: Validator ----
         error = agent_validator(sql, trace)
         if error == "NO_SQL":
             comments = re.findall(r"--\s*(.+)", sql)
@@ -135,12 +150,12 @@ def ask(
         if error:
             return _result(question, f"Blocked: {error}", trace)
 
-        # ---- Step 5: Executor (with retry on failure) ----
+        # ---- Step 6: Executor (with retry on failure) ----
         try:
             columns, rows = agent_executor(engine, sql, config.MAX_ROWS, trace)
         except Exception as e:
             trace.log("Executor", f"Query failed: {e}")
-            sql = agent_sql_retry(client, model, question, sql, str(e), schema_block, trace)
+            sql = agent_sql_retry(client, model, reformulated, sql, str(e), schema_block, trace)
 
             error = agent_validator(sql, trace)
             if error == "NO_SQL":
@@ -153,13 +168,13 @@ def ask(
 
             columns, rows = agent_executor(engine, sql, config.MAX_ROWS, trace)
 
-        # ---- Step 6: Formatter ----
+        # ---- Step 7: Formatter ----
         if not rows:
             trace.log("Formatter", "No results returned.")
             return _result(question, "The query returned no results.", trace)
 
         answer = agent_formatter(client, model, question, sql, columns, rows, trace)
-        return _result(question, answer, trace)
+        return _result(question, answer, trace, columns=columns, rows=rows, sql=sql)
 
     except Exception as e:
         trace.log("System", f"Error: {e}")
@@ -168,5 +183,16 @@ def ask(
         engine.dispose()
 
 
-def _result(question: str, answer: str, trace: AgentTrace) -> dict:
-    return {"question": question, "answer": answer, "trace": trace.to_list()}
+def _result(question: str, answer: str, trace: AgentTrace, columns=None, rows=None, sql=None) -> dict:
+    usage = get_token_usage()
+    trace.log("System", f"Tokens: {usage['prompt_tokens']} in + {usage['completion_tokens']} out = {usage['total_tokens']} total ({usage['calls']} LLM calls)")
+    r = {"question": question, "answer": answer, "trace": trace.to_list(), "usage": usage}
+    if sql:
+        r["sql"] = sql
+    if columns and rows:
+        r["columns"] = columns
+        r["rows"] = [
+            [str(v) if v is not None else "" for v in row]
+            for row in rows[:200]
+        ]
+    return r

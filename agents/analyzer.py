@@ -17,14 +17,14 @@ def agent_analyzer(
     trace: AgentTrace,
 ) -> str:
     """Analyzes schema columns and returns detailed instructions for the SQL Writer."""
-    trace.log("Analyzer", "Analyzing schema to find relevant columns...")
+    trace.log("Analyzer", "Writing SQL instructions based on Reasoner's analysis...")
 
     system = ANALYZER_SYSTEM.format(
         db_type=db_type,
         schema_block=schema_block,
         intent=plan.get("intent", ""),
-        tables=", ".join(plan.get("tables", [])),
-        notes=plan.get("notes", "none"),
+        strategy=plan.get("strategy", "direct query"),
+        tables=", ".join(plan.get("tables", [])) or "all",
     )
 
     analysis = call_llm(client, model, [
@@ -32,5 +32,5 @@ def agent_analyzer(
         {"role": "user", "content": question},
     ], max_tokens=800)
 
-    trace.log("Analyzer", f"Analysis:\n{analysis}")
+    trace.log("Analyzer", f"SQL Plan:\n{analysis}")
     return analysis
