@@ -1,26 +1,45 @@
-# AskBase
+<p align="center">
+  <img src="Img/logo.png" alt="AskBase Logo" width="80" />
+</p>
 
-Ask questions to your database in natural language. Open-source AI-powered SQL assistant.
+<h1 align="center">AskBase</h1>
+
+<p align="center">
+  <strong>Talk to your database. Get answers instantly.</strong><br/>
+  Open-source AI-powered natural language to SQL engine.
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#features">Features</a> &bull;
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#api">API</a> &bull;
+  <a href="https://github.com/gaetanyossa/Askbase">GitHub</a>
+</p>
+
+---
+
+AskBase lets anyone query a database without writing SQL. Ask a question in plain language, and a multi-agent AI pipeline analyzes your schema, writes safe SQL, executes it, and returns a clear answer. Works with BigQuery, PostgreSQL, MySQL and SQLite, and supports OpenAI, Claude and Gemini as LLM providers.
 
 ![AskBase Screenshot](Img/screenshot.png)
 
 ## Features
 
-- **Natural language to SQL** — ask questions in plain English (or any language), get answers from your database
-- **Multi-agent pipeline** — Orchestrator → Analyzer → SQL Writer → Validator → Executor → Formatter
-- **Multi-database** — BigQuery, PostgreSQL, MySQL, SQLite
-- **Multi-LLM** — OpenAI, Claude (Anthropic), Gemini (Google)
-- **Live schema introspection** — automatically reads your tables and columns with types
-- **Conversation memory** — follow-up questions understand context
-- **SQL safety** — only SELECT queries allowed, dangerous keywords blocked
-- **Agent trace** — see the full pipeline reasoning in real time
+- **Natural language to SQL** -- ask questions in plain English (or any language), get answers from your database
+- **Multi-agent pipeline** -- Orchestrator > Analyzer > SQL Writer > Validator > Executor > Formatter
+- **Multi-database** -- BigQuery, PostgreSQL, MySQL, SQLite
+- **Multi-LLM** -- OpenAI, Claude (Anthropic), Gemini (Google)
+- **Live schema introspection** -- automatically reads your tables and columns with types
+- **Multi-conversation** -- create, switch and delete conversations with persistent history
+- **SQL safety** -- only SELECT queries allowed, dangerous keywords blocked
+- **Agent trace** -- see the full pipeline reasoning in real time
 
 ## Quick Start
 
 ### 1. Install
 
 ```bash
-git clone https://github.com/gaetanyossa/askbase.git
+git clone https://github.com/gaetanyossa/Askbase.git
 cd Askbase
 pip install -r requirements.txt
 ```
@@ -73,39 +92,43 @@ MAX_ROWS=100
 
 ## Architecture
 
+AskBase uses an orchestrator-driven multi-agent pipeline. Each agent has a single responsibility, and the Orchestrator decides which agents to call based on the user's question.
+
 ```
 User Question
-     │
-     ▼
-┌─────────────┐
-│ Orchestrator │  Decides: chat, schema question, or data query
-└──────┬──────┘
-       │ (data query)
-       ▼
-┌──────────┐
-│ Analyzer │  Inspects schema, finds the right tables & columns
-└────┬─────┘
-     │
-     ▼
-┌────────────┐
-│ SQL Writer │  Writes the SQL based on Analyzer's instructions
-└─────┬──────┘
-      │
-      ▼
-┌───────────┐
-│ Validator │  Checks SQL safety (SELECT only, no DROP/DELETE/etc.)
-└─────┬─────┘
-      │
-      ▼
-┌──────────┐
-│ Executor │  Runs the query against your database
-└────┬─────┘
-     │
-     ▼
-┌───────────┐
-│ Formatter │  Presents results in a readable format
-└───────────┘
+     |
+     v
++--------------+
+| Orchestrator |  Brain: decides if it's a chat, schema question, or data query
++------+-------+
+       |
+       v (data query)
++----------+
+| Analyzer |  Inspects schema, finds the right tables and columns
++----+-----+
+     |
+     v
++------------+
+| SQL Writer |  Writes the SQL based on Analyzer's findings
++-----+------+
+      |
+      v
++-----------+
+| Validator |  Checks SQL safety (SELECT only, no DROP/DELETE/UPDATE/INSERT)
++-----+-----+
+      |
+      v
++----------+
+| Executor |  Runs the query against your database
++----+-----+
+     |
+     v
++-----------+
+| Formatter |  Presents results in a clear, readable format
++-----------+
 ```
+
+**Why multi-agent?** Each agent is specialized with its own prompt, so no single LLM call has to handle everything. The Orchestrator coordinates the flow and can short-circuit for simple questions (e.g. "how many tables?" doesn't need SQL).
 
 ## Docker
 
@@ -116,20 +139,30 @@ docker run -p 8080:8080 askbase
 
 ## API
 
-Interactive docs at `/docs` when the server is running.
+Interactive API docs available at `/docs` when the server is running.
 
 **POST** `/api/ask`
-- `question` — your question in natural language
-- `db_type` — bigquery, mysql, postgresql, sqlite
-- `api_key` — your LLM API key
-- `llm_provider` — openai, anthropic, gemini
+
+| Parameter | Description |
+|-----------|-------------|
+| `question` | Your question in natural language |
+| `db_type` | `bigquery`, `mysql`, `postgresql`, `sqlite` |
+| `api_key` | Your LLM API key |
+| `llm_provider` | `openai`, `anthropic`, `gemini` |
+| `conversation_id` | (optional) Conversation ID for context |
 
 ## Tech Stack
 
-- **Backend** — Python, FastAPI, SQLAlchemy
-- **Frontend** — Vanilla HTML/CSS/JS
-- **LLM** — OpenAI-compatible API (supports OpenAI, Anthropic, Google)
-- **Databases** — BigQuery, PostgreSQL, MySQL, SQLite
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python, FastAPI, SQLAlchemy |
+| Frontend | Vanilla HTML / CSS / JS |
+| LLM | OpenAI-compatible API (OpenAI, Anthropic, Google) |
+| Databases | BigQuery, PostgreSQL, MySQL, SQLite |
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ## License
 
