@@ -1,0 +1,11 @@
+services:
+  askbase:
+    build: .
+    command: python app.py
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./table_schemas.json:/app/table_schemas.json:ro
+    restart: unless-stopped

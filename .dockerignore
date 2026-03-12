@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+.env
+*.zip
+ngrok.exe
+ngrok-v3.zip
+service_postgres_key.json
+temp_service_account.json
+.git/

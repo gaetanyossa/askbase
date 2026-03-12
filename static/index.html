@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AskBase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <div class="sidebar-hdr">
+        <div class="logo">A</div>
+        <span class="brand">AskBase</span>
+        <span class="badge">Open Source</span>
+    </div>
+    <div class="sidebar-nav">
+        <div class="nav-label">Main</div>
+        <div class="nav-item active" data-tab="chat">Chat</div>
+        <div class="nav-item" data-tab="setup">Setup</div>
+        <div class="nav-label">Data</div>
+        <div class="nav-item" data-tab="schema">Schema</div>
+    </div>
+    <div class="conv-section">
+        <div class="conv-header">
+            <span class="nav-label" style="padding:0">Conversations</span>
+            <button class="new-chat-btn" id="new-chat-btn" title="New chat">+</button>
+        </div>
+        <div class="conv-list" id="conv-list"></div>
+    </div>
+    <div class="sidebar-footer">
+        <a href="/docs" target="_blank">API Docs</a>
+        <a href="https://github.com/gaetanyossa/Askbase" target="_blank">GitHub</a>
+    </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+    <!-- SETUP panel -->
+    <div class="panel" id="p-setup">
+        <div class="sl">1 / Choose your database</div>
+        <div class="radios" id="db-radios">
+            <label><input type="radio" name="db" value="bigquery" checked>BigQuery</label>
+            <label><input type="radio" name="db" value="mysql">MySQL</label>
+            <label><input type="radio" name="db" value="postgresql">PostgreSQL</label>
+            <label><input type="radio" name="db" value="sqlite">SQLite</label>
+        </div>
+
+        <div id="bq-fields">
+            <div class="sl">BigQuery credentials</div>
+            <div class="file-drop" id="file-drop">Drop your service account JSON here, or click to upload</div>
+            <input type="file" id="file-input" accept=".json" hidden>
+            <div style="margin-top:.5rem"><span class="status idle" id="bq-status"><span class="dot"></span>Waiting for file</span></div>
+            <div class="row" style="margin-top:1rem">
+                <div class="field"><label>Project ID</label><input id="bq-project" placeholder="my-gcp-project"></div>
+                <div class="field"><label>Dataset</label><select id="bq-dataset"><option value="">-- upload credentials first --</option></select></div>
+            </div>
+        </div>
+
+        <div id="sql-fields" style="display:none">
+            <div class="sl">Connection</div>
+            <div class="row">
+                <div class="field"><label>Host</label><input id="sql-host" placeholder="localhost"></div>
+                <div class="field"><label>Port</label><input id="sql-port" placeholder="3306 / 5432"></div>
+            </div>
+            <div class="row">
+                <div class="field"><label>Database</label><input id="sql-database" placeholder="my_database"></div>
+                <div class="field"><label>User</label><input id="sql-user" placeholder="root"></div>
+                <div class="field"><label>Password</label><input id="sql-password" type="password"></div>
+            </div>
+        </div>
+
+        <div id="sqlite-fields" style="display:none">
+            <div class="sl">SQLite</div>
+            <div class="field"><label>Path to .db file</label><input id="sqlite-path" placeholder="/data/analytics.db"></div>
+        </div>
+
+        <div class="sl" style="margin-top:1.5rem">2 / LLM Provider</div>
+        <div class="radios" id="llm-radios">
+            <label><input type="radio" name="llm" value="openai" checked>OpenAI</label>
+            <label><input type="radio" name="llm" value="anthropic">Claude (Anthropic)</label>
+            <label><input type="radio" name="llm" value="gemini">Gemini (Google)</label>
+        </div>
+        <div class="field"><label>API Key</label><input id="api-key" type="password" placeholder="sk-..."></div>
+        <div class="hint">Your key stays in your browser. Never stored on disk.</div>
+
+        <div class="sl" style="margin-top:1.5rem">3 / Confirm</div>
+        <button class="btn btn-dark" id="save-btn">Save and continue</button>
+        <div id="save-status" style="margin-top:.5rem"></div>
+    </div>
+
+    <!-- CHAT panel -->
+    <div class="chat-panel active" id="p-chat">
+        <div class="chat-layout">
+            <div class="chat-main">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="chat-welcome" id="chat-welcome">
+                        <h2>AskBase</h2>
+                        <p>Ask anything about your data in natural language. I remember our conversation.</p>
+                        <div class="chips" id="chips"></div>
+                    </div>
+                </div>
+                <div class="chat-input-bar">
+                    <textarea id="q-input" rows="1" placeholder="Ask a question about your data..."></textarea>
+                    <button class="send-btn" id="send-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="trace-sidebar" id="trace-sidebar">
+                <div class="trace-header">Agent Pipeline</div>
+                <div class="trace-content" id="trace-content">
+                    <div class="trace-empty">Agent communication will appear here when you send a message.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCHEMA panel -->
+    <div class="panel" id="p-schema">
+        <div class="sl">Tables and columns</div>
+        <div class="schema-list" id="schema-list">Complete setup first to see live schema.</div>
+    </div>
+
+</div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

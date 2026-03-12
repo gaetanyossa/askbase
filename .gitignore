@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Environment & secrets
+.env
+service_postgres_key.json
+temp_service_account.json
+
+# Gradio
+.gradio/
+
+# Data
+table_schemas.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ngrok
+ngrok.exe
+ngrok.zip
+ngrok-v3.zip
