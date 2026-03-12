@@ -13,17 +13,21 @@
 
 <!-- Sidebar -->
 <div class="sidebar">
-    <div class="sidebar-hdr">
+    <div class="sidebar-hdr" id="home-btn" title="Back to chat" style="cursor:pointer">
         <div class="logo">A</div>
         <span class="brand">AskBase</span>
         <span class="badge">Open Source</span>
     </div>
     <div class="sidebar-nav">
         <div class="nav-label">Main</div>
-        <div class="nav-item active" data-tab="chat">Chat</div>
         <div class="nav-item" data-tab="setup">Setup</div>
         <div class="nav-label">Data</div>
+        <div class="nav-item" data-tab="audit">Database Audit</div>
         <div class="nav-item" data-tab="schema">Schema</div>
+        <div class="nav-item" data-tab="history">History</div>
+        <div class="nav-item" data-tab="dashboard">Dashboard</div>
+        <div class="nav-label">Automation</div>
+        <div class="nav-item" data-tab="alerts">Reports & Alerts</div>
     </div>
     <div class="conv-section">
         <div class="conv-header">
@@ -43,6 +47,14 @@
 
     <!-- SETUP panel -->
     <div class="panel" id="p-setup">
+        <div class="demo-banner" id="demo-banner">
+            <div class="demo-text">
+                <strong>Try AskBase instantly</strong>
+                <span>Use our built-in e-commerce demo database (200 customers, 500 orders, 20 products)</span>
+            </div>
+            <button class="btn btn-demo" id="demo-btn">Use Demo Database</button>
+        </div>
+
         <div class="sl">1 / Choose your database</div>
         <div class="radios" id="db-radios">
             <label><input type="radio" name="db" value="bigquery" checked>BigQuery</label>
@@ -106,6 +118,7 @@
                     </div>
                 </div>
                 <div class="chat-input-bar">
+                    <button class="trace-toggle" id="trace-toggle" title="Show agent pipeline">&#9881;</button>
                     <textarea id="q-input" rows="1" placeholder="Ask a question about your data..."></textarea>
                     <button class="send-btn" id="send-btn">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -113,7 +126,7 @@
                 </div>
             </div>
             <div class="trace-sidebar" id="trace-sidebar">
-                <div class="trace-header">Agent Pipeline</div>
+                <div class="trace-header">Agent Pipeline <button class="trace-close" id="trace-close" title="Close">&times;</button></div>
                 <div class="trace-content" id="trace-content">
                     <div class="trace-empty">Agent communication will appear here when you send a message.</div>
                 </div>
@@ -121,15 +134,74 @@
         </div>
     </div>
 
-    <!-- SCHEMA panel -->
+    <!-- AUDIT panel -->
+    <div class="panel" id="p-audit">
+        <div class="audit-panel-header">
+            <div class="sl" style="margin:0">Database Audit</div>
+            <div class="audit-panel-actions" id="audit-actions">
+                <button class="btn btn-sm" id="audit-edit-btn" style="display:none">Edit</button>
+                <button class="btn btn-sm" id="audit-save-btn" style="display:none">Save</button>
+                <button class="btn btn-sm" id="audit-cancel-btn" style="display:none">Cancel</button>
+                <button class="btn btn-sm btn-dark" id="audit-run-btn">Run Audit</button>
+            </div>
+        </div>
+        <div id="audit-content">
+            <p style="color:#aaa;font-size:.8125rem">No audit yet. Click "Run Audit" to analyze your database.</p>
+        </div>
+        <textarea id="audit-editor" class="audit-editor" style="display:none"></textarea>
+    </div>
+
+    <!-- SCHEMA / DATA CATALOG panel -->
     <div class="panel" id="p-schema">
-        <div class="sl">Tables and columns</div>
-        <div class="schema-list" id="schema-list">Complete setup first to see live schema.</div>
+        <div class="sl">Data Catalog</div>
+        <div class="catalog" id="schema-list">Complete setup first to see live schema.</div>
+    </div>
+
+    <!-- HISTORY panel -->
+    <div class="panel" id="p-history">
+        <div class="sl">Query History</div>
+        <div class="history-list" id="history-list">
+            <span style="color:#aaa">No queries yet. Start asking questions!</span>
+        </div>
+    </div>
+
+    <!-- DASHBOARD panel -->
+    <div class="panel" id="p-dashboard">
+        <div class="audit-panel-header">
+            <div class="sl" style="margin:0">Dashboard</div>
+            <button class="btn btn-sm" id="dashboard-clear-btn" style="display:none">Clear All</button>
+        </div>
+        <div id="dashboard-grid">
+            <p style="color:#aaa;font-size:.8125rem">No pinned charts yet. Use "Pin to Dashboard" after a query result.</p>
+        </div>
+    </div>
+
+    <!-- ALERTS / SCHEDULED REPORTS panel -->
+    <div class="panel" id="p-alerts">
+        <div class="sl">Scheduled Reports</div>
+        <p style="font-size:.8125rem;color:#888;margin-bottom:1rem">Run a question automatically and get results on Telegram.</p>
+
+        <div class="field"><label>Question</label><input id="alert-question" placeholder="Total revenue yesterday"></div>
+        <div class="row">
+            <div class="field"><label>Time (HH:MM)</label><input id="alert-cron" placeholder="09:00" value="09:00"></div>
+            <div class="field"><label>Channel</label><select id="alert-channel"><option value="telegram">Telegram</option></select></div>
+        </div>
+        <div class="row">
+            <div class="field"><label>Telegram Bot Token</label><input id="alert-bot-token" placeholder="123456:ABC-DEF..." type="password"></div>
+            <div class="field"><label>Telegram Chat ID</label><input id="alert-chat-id" placeholder="-100123456789"></div>
+        </div>
+        <div class="hint" style="margin-bottom:1rem">Create a bot via <a href="https://t.me/BotFather" target="_blank">@BotFather</a>. Get your chat ID via <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>.</div>
+        <button class="btn btn-dark" id="alert-save-btn">Create Schedule</button>
+        <div id="alert-status" style="margin-top:.5rem"></div>
+
+        <div class="sl" style="margin-top:2rem">Active Schedules</div>
+        <div id="alert-list"><span style="color:#aaa;font-size:.8125rem">No schedules yet.</span></div>
     </div>
 
 </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>
